@@ -1,50 +1,67 @@
 pipeline {
     agent any
+
     environment {
         DOCKER_IMAGE_NAME = 'calculator'
-        MAVEN_HOME = 'C:/Program Files (x86)/Maven/apache-maven-3.9.6'
+        GITHUB_REPO_URL = 'https://github.com/abhinav1829/calculator.git'
+        MAVEN_HOME = '/home/abhinav/Downloads/maven'
     }
+
     stages {
-        stage('Git Pull') {
+        stage('Checkout') {
             steps {
-                git url: 'https://github.com/abhinav1829/calculator.git' , branch: 'main'
+                script {
+                    // Checkout the code from the GitHub repository
+                    git branch: 'main', url: "${GITHUB_REPO_URL}"
+                }
             }
         }
-      stage('Maven Build') {
+        stage('Maven Build') {
+                            steps {
+                                script {
+                                    env.PATH = "${env.MAVEN_HOME}/bin:${env.PATH}"
+                                    sh 'mvn clean install'
+                                }
+                            }
+          }
+        stage('Run Tests') {
+                            steps {
+                                script
+                                {
+                                          sh 'mvn test'
+                                }
+                               }
+                         }
+        stage('Build Docker Image') {
             steps {
-                env.PATH = "${env.MAVEN_HOME}/bin:${env.PATH}"
-                sh 'mvn clean install'
+                script {
+                    // Build Docker image
+                    docker.build("${DOCKER_IMAGE_NAME}", '.')
+                }
             }
         }
-      stage('Testing project') {
-             steps {
-                sh "mvn test"
-             }
-        }
-      stage('Docker Build to Image') {
-             steps {
-                  sh 'docker stop calculator || true'
-                  sh 'docker rm calculator || true'
-                  sh 'docker build -t pythospach/calculator:latest .'
-            }
-        }
-      stage('Push Docker Image to Docker Hub') {
-              steps {
-                        withDockerRegistry([ credentialsId: "DockerHub", url: "" ]){
-                        sh 'docker push pythospach/calculator:latest'
+
+        stage('Push Docker Images') {
+            steps {
+                script {
+                    docker.withRegistry('', 'DockerHubCred') {
+                        sh 'docker tag ${DOCKER_IMAGE_NAME} pythospach/calculator:latest'
+                        sh 'docker push pythospach/calculator:latest' // Corrected the username
                     }
-              }
-      }
-      stage('Ansible Pull Docker Image') {
-                  steps {
-                      ansiblePlaybook becomeUser: null,
-                      colorized: true,
-                      disableHostKeyChecking: true,
-                      installation: 'Ansible',
-                      inventory: 'inventory',
-                      playbook: 'deploy.yml',
-                      sudoUser: null
-                  }
-      }
+                }
+            }
+        }
+
+        stage('Run Ansible Playbook') {
+            steps {
+                script {
+                    ansiblePlaybook(
+                        playbook: 'deploy.yml',
+                        inventory: 'inventory'
+                     )
+                }
+            }
+        }
+
     }
 }
