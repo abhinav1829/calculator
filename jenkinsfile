@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    environment {
+        DOCKER_IMAGE_NAME = 'calculator'
+        MAVEN_HOME = 'C:/Program Files (x86)/Maven/apache-maven-3.9.6'
+    }
     stages {
         stage('Git Pull') {
             steps {
@@ -8,6 +12,7 @@ pipeline {
         }
       stage('Maven Build') {
             steps {
+                env.PATH = "${env.MAVEN_HOME}/bin:${env.PATH}"
                 sh 'mvn clean install'
             }
         }
