@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+    stages {
+        stage('Git Pull') {
+            steps {
+                git url: 'https://github.com/abhinav1829/calculator.git' , branch: 'main'
+            }
+        }
+      stage('Maven Build') {
+            steps {
+                sh 'mvn clean install'
+            }
+        }
+      stage('Testing project') {
+             steps {
+                sh "mvn test"
+             }
+        }
+      stage('Docker Build to Image') {
+             steps {
+                  sh 'docker stop calculator || true'
+                  sh 'docker rm calculator || true'
+                  sh 'docker build -t pythospach/calculator:latest .'
+            }
+        }
+      stage('Push Docker Image to Docker Hub') {
+              steps {
+                        withDockerRegistry([ credentialsId: "DockerHub", url: "" ]){
+                        sh 'docker push pythospach/calculator:latest'
+                    }
+              }
+      }
+      stage('Ansible Pull Docker Image') {
+                  steps {
+                      ansiblePlaybook becomeUser: null,
+                      colorized: true,
+                      disableHostKeyChecking: true,
+                      installation: 'Ansible',
+                      inventory: 'inventory',
+                      playbook: 'deploy.yml',
+                      sudoUser: null
+                  }
+      }
+    }
+}
