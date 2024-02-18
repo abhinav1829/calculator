@@ -25,7 +25,7 @@ pipeline {
         }
       stage('Push Docker Image to Docker Hub') {
               steps {
-                        withDockerRegistry([ credentialsId: "DockerHub", url: "" ]){
+                        withDockerRegistry([ credentialsId: "DockerHubCred", url: "" ]){
                         sh 'docker push pythospach/calculator:latest'
                     }
               }
